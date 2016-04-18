@@ -3,6 +3,19 @@
 https://github.com/josdejong/jsoneditor
 
 
+## 2016-04-16, version 5.5.1
+
+- Fixed enum select boxes not being rendered/removed when setting or removing
+  a JSON schema via `editor.setSchema(schema)`.
+
+
+## 2016-04-16, version 5.5.0
+
+- Implemented a dropdown for values having an JSON Schema enum.
+  Thanks @tdakanalis.
+- Fixed #291, #292: Some CSS broken when using the editor in combination with
+  bootstrap. Thanks @nucleartide.
+
 ## 2016-04-09, version 5.4.0
 
 - Upgraded all dependencies (`ajv`, `brace`, etc).

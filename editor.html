@@ -1,0 +1,605 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <!-- when using the mode "code", it's important to specify charset utf-8 -->
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+  <link href="dist/jsoneditor.min.css" rel="stylesheet" type="text/css">
+  <script src="dist/jsoneditor.js"></script>
+
+  <!-- nb: jsoneditor-minimalist.js & jsoneditor-minimalist.min.js har ikke markering af sammenh�rende kode -->
+ <script src="dist/filereader.js"></script>
+  <script src="dist/FileSaver.js"></script>
+  <script src="OpenFormatValidate.js"></script>
+  <script src="OpenFormatFiles.js"></script>
+
+  <style type="text/css">
+
+    html, body{
+      min-height: 100%;
+    }
+
+    body {
+      font: 11pt arial;
+      color: #4d4d4d;
+      padding: 0;
+      width: 99.3%;
+    }
+
+    code {
+      background-color: #f5f5f5;
+    }
+
+    p, dl, h1 {
+      margin-top: 0;
+    }
+
+    div.code {
+      padding: 0.5em;
+      background-color: #f5f5f5;
+    }
+
+    span.strong, dt {
+      font-weight: bold;
+    }
+
+    dd {
+      margin-left: 1em;
+    }
+
+    dd.hide {
+      display: none;
+    }
+
+    dd.show {
+      display: inherit;
+    }
+
+    dt { cursor: pointer; }
+
+    #jsoneditor {
+      width: 100%;
+      height: 600px;
+      margin-bottom: 1%;
+    }
+
+    #jsoneditor-wrapper {
+      width: 65%;
+      padding: 2% 0% 3% 3%;
+      float: left;
+    }
+
+    #jsoneditor-documentation {
+      width: 25%;
+      padding: 2% 3% 2% 3%;
+      float: left;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      text-align: center;
+      z-index: 10;
+      background-color: rgba(0,0,0,0.5);
+      display: none;
+    }
+
+    .modal {
+      display: none;
+      text-align: left;
+      position: absolute;
+      overflow: auto;
+      left: 40%;
+      top: 15%;
+      min-width: 30%;
+      max-width: 50%;
+      max-height: 70%;
+      box-shadow: 3px 6px 6px rgba(0,0,0,0.5);
+      background-color: white;
+      z-index: 11; /* 1px higher than the overlay layer */
+      padding: 1rem;
+    }
+
+    .modal-content {
+      clear: left;
+    }
+
+    .modal-content p {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .modal-header {
+      font-weight: bold;
+      font-size: 1.2rem;
+      padding: 0 0 0.5rem 0;
+    }
+
+    .modal-header p {
+      float: left;
+    }
+
+    .modal-header p.modal-close, .modal-footer p.modal-close {
+      float: right;
+      cursor: pointer;
+      border: 3px outset #369;
+      background-color: ##83b6e9;
+      padding: 0 0.4rem;
+    }
+
+    .modal-header p.modal-close {
+      float: right;
+      cursor: pointer;
+    }
+
+    .modal-footer {
+      font-weight: bold;
+      font-size: 1.2rem;
+      padding: 0.5rem 0 0.5rem 0;
+      text-align: right;
+    }
+
+    #jsoneditor-filename {
+      padding: 0.5rem;
+      display: inline-block;
+      float: left;
+    }
+
+    .form {
+      font-family: Arial,sans-serif;
+      font-size: 1.25rem;
+      font-weight: normal;
+      text-align: center;
+    }
+
+    .form-content-wrapper {
+      display: inline-block;
+      padding: 0 1%
+    }
+
+    .form-text {
+      width: auto;
+      height: 30px;
+      padding: 0 0 0 5px;
+    }
+
+    .form-submit {
+      border: 3px outset #369;
+      font-size: 1.2rem;
+      padding: 0 0.3rem;
+      width: auto;
+      position: relative;
+      top: 2px;
+    }
+
+    li {
+      margin-left: -1rem;
+    }
+
+  </style>
+</head>
+<body>
+
+    <div id="overlay"></div>
+
+    <div class="modal" id="modal-filelist">
+      <div class="modal-header">
+        <p>Filer p&aring; server</p>
+        <p class="modal-close">x</p>
+      </div>
+      <div class="modal-content" id="modal-filelist-content"></div>
+      <div class="modal-footer"><p class="modal-close">Luk</p></div>
+    </div>
+
+    <div class="modal" id="modal-filename">
+      <div class="modal-header">
+        <p>Gem fil p&aring; server:</p>
+        <p class="modal-close">x</p>
+      </div>
+      <div class="modal-content" id="modal-filename-content">
+        <form id="modal-filename-form" class="form" accept-charset="UTF-8" method="get" action="">
+          <div class="form-content-wrapper">
+            <input id="modal-filename-form-text" class="form-text" type="text" maxlength="100" size="35" value="" name="search_block_form" placeholder="Skriv nyt filnavn" title="Skriv nyt filnavn">
+            <input id="modal-filename-form-submit" class="form-submit" type="submit" value="Gem" name="op">
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="jsoneditor-wrapper">
+      <div id="jsoneditor" style=""></div>
+      <p>
+        <input type="file" id="loadDocument" value="Load"/>
+        <input type="button" id="saveDocument" value="Save" />
+        <input type="button" id="listDocumentServer" value="Load from server" />
+        <input type="button" id="saveDocumentServer" value="Save on server" />
+      </p>
+    </div>
+
+    <div id="jsoneditor-documentation">
+      <h1>Beskrivelse</h1>
+      <dl>
+        <dt>format</dt>
+        <dd class="hide">
+          Har 2 underpunkter: "punctuation" og "element-format": <br/>
+          <span class="strong">'punctuation'</span> best&aring;r af: <br/>'<code>first</code>' som er en tekst, der s&aelig;ttes ind f&oslash;r f&oslash;rste element i resultat-listen. '<code>last</code>' er en tekst, der s&aelig;ttes ind efter sidste element. Og '<code>next</code>' er en tekst der s&aelig;ttes ind mellem hvert element i listen (Hvis der er mere end &eacute;t).<br/>
+          <span class="strong">'subkeyPunctuation'</span> (den s&aelig;tter punctuation for n&oslash;gler som har best&aring;r af: <br/>'<code>first</code>' som er en tekst, der s&aelig;ttes ind f&oslash;r f&oslash;rste element i resultat-listen. '<code>last</code>' er en tekst, der s&aelig;ttes ind efter sidste element. Og '<code>next</code>' er en tekst der s&aelig;ttes ind mellem hvert element i listen (Hvis der er mere end &eacute;t).<br/>
+        </dd>
+        <dt>content</dt>
+        <dd class="hide">Best&aring;r af en r&aelig;kke objekter som best&aring;r af: <br/>En <span class="strong">n&oslash;gle</span> som er ID for et objekt, der igen best&aring;r af &eacute;t eller flere n&oslash;gler af typen:<br/>
+            <ul>
+              <li><span class="strong">'field'</span>: Et MARC-felt (f.eks.: 240).</li>
+              <li><span class="strong">'subfields'</span>: &Eacute;t eller flere delfelter, som data skal hentes fra. Eventuelt med et prefix og suffix.</li>
+              <li><span class="strong">'subfieldsOrder'</span>: &Eacute;t eller flere delfelter, som data skal hentes fra. Eventuelt med et prefix og suffix.</li>
+              <li><span class="strong">'match'</span>: Et regul&aelig;rt udtryk, som data skal matche. Hvis ikke returneres NULL.</li>
+              <li><span class="strong">'subfieldsMatch'</span>: Objekt med delfelt som n&oslash;gle, og match streng som v&aelig;rdi.</li>
+              <li><span class="strong">'attribute'</span>: En liste af key:value s&aelig;t, som kan bruges i <code>format</code>.</li>
+              <li><span class="strong">'function' (TO DO)</span>: Navn p&aring; javascript funktion.<br/>Hvis reglen for at hente data ud af MARC-posten er for kompliceret til at kunne beskrives i en konfigurations-fil, kan man i stedet skrive en javaScript-funktion til at hente data.</li>
+              <li><span class="strong">'translation'</span>: Navn p&aring; tabel, som bruges i overs&aelig;ttelses-funktion.</li>
+              <li><span class="strong">'value'</span>: Tekststreng som returneres (hvis der ikke er behov for dynamisk genererede v&aelig;rdier).</li>
+              <li><span class="strong">'boolean' (TO DO)</span>: Reference til en konfigurations-fil ved at skrive filnavnet med tuborg-klammer om, f.eks.: '<code>{isMovie}</code>.</li>
+              <li><span class="strong">'#comment: '</span>Kommentar.</li>
+            </ul>
+            <p>Alternativt kan man referere til en anden konfigurations-fil ved at skrive filnavnet med tuborg-klammer om, f.eks.: '<code>{isMovie}</code><br/>(To do: Brug istedet "boolean" n&oslash;gle i objekt)'.</p>
+            </dd>
+
+        <dt>values</dt>
+        <dd class="hide">N&oslash;glerne, som defineret i 'content', adskilt med '<code>&&</code>' (hvis alle v&aelig;rdier skal bruges, f.eks. en liste af ISBN og ISSN) eller '<code>||</code>', hvis der skal returneres det f&oslash;rste ikke-tomme svar.<br/>
+            Alternativt kan man bruge en 'switch' syntaks, som er en liste af udtryk: <br/>
+            <div class="code"><code>
+            [<br/>
+            &nbsp;&nbsp;{"key1" : "key2"}<br/>
+            &nbsp;&nbsp;{"key3 && key4" : "key5"}<br/>
+            &nbsp;&nbsp;{"key6 || key7" : "key8"}<br/>
+            &nbsp;&nbsp;{"default" : "key9"}<br/>
+            ]<br/>
+            </code></div>
+            (L&aelig;s: hvis key1 s&aring; key2. Ellers, hvis key3 AND key4 s&aring; key5. Ellers, hvis key6 OR key7 s&aring; key8. Ellers key9)<br/>
+
+            Samme syntaks kan ogs&aring; udtrykke en "AND" struktur - men h&eacute;r bruges et objekt i stedet for en liste: <br/>
+            <div class="code"><code>
+            {<br/>
+            &nbsp;&nbsp;"key1" : "key2",<br/>
+            &nbsp;&nbsp;"key3 && key4" : "key5",<br/>
+            &nbsp;&nbsp;"key6 || key7" : "key8",<br/>
+            &nbsp;&nbsp;"default" : "key9"<br/>
+            }<br/>
+            </code></div>
+            (L&aelig;s: hvis key1 s&aring; key2.  Og, hvis key3 AND key4 ogs&aring; key5. Og, hvis key6 OR key7 ogs&aring; key8. Hvis ikke andet, s&aring; key9)<br/>
+            </dd>
+        <dt>match (valgfri)</dt>
+        <dd class="hide">Et regul&aelig;rt udtryk, som data skal matche. Hvis ikke returneres NULL.</dd>
+        <dt>#comment (valgfri)</dt>
+        <dd class="hide">Kommentar. Det anbefales at lave en beskrivelse af filen p&aring; &oslash;verste niveau, og en beskrivelse af hver n&oslash;gle. <br/>Hvis man gerne vil have mere end &eacute;n kommentar i et afsnit, skal de navngives fortl&oslash;bende ('#comment1', '#comment2', '...')</dd>
+      </dl>
+    </div>
+
+    <script>
+        var filename = 'document.json'
+        var container = document.getElementById('jsoneditor');
+
+        var json = {
+          "#comment": "comment on configuration file",
+          "format": {
+            "#comment": "comment on format and punctuation",
+            "punctuation": {
+              "#comment": "comment on punctuation",
+              "first": "",
+              "next": "",
+              "last": ""
+            }
+          },
+          "content": {
+            "#comment": "comment on content",
+            "key": {
+              "#comment": "comment on field data",
+              "field": "",
+              "subfields": [{
+                "a": {
+                  "#comment": "comment on subfield",
+                  "first": "",
+                  "next": "",
+                  "last": ""
+                }
+              }],
+              "attribute": {},
+              "function": "",
+              "match": ""
+            }
+          },
+          "values": "key",
+          "match": ""
+        };
+
+        var options = {
+          mode: 'tree',
+          modes: ['code', 'tree'], // allowed modes
+          onError: function (err) {
+            alert(err.toString());
+          },
+          onModeChange: function (newMode, oldMode) {
+            console.log('Mode switched from', oldMode, 'to', newMode);
+          },
+          onEditable: function (node) {
+            switch (node.field) {
+
+              case 'format':
+                return {
+                  field: false,
+                  value: true
+                };
+
+              case 'content':
+                return {
+                  field: false,
+                  value: true
+                };
+
+              case '*':
+                return {
+                  field: true,
+                  value: true,
+                  path: ['object', 'content', '*']
+                };
+
+              case 'field':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'content', '*', 'field']
+                };
+
+              case 'subfields':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'content', '*', 'subfields']
+                };
+
+              case 'values':
+                return {
+                  field: false,
+                  value: true
+                };
+
+              case 'punctuation':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'punctuation']
+                };
+
+              case 'first':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'punctuation', 'first']
+                };
+
+              case 'last':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'punctuation', 'last']
+                };
+
+              case 'next':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'punctuation', 'next']
+                };
+
+              case 'subkeyPunctuation':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'subkeyPunctuation']
+                };
+
+              case 'prefix':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'subkeyPunctuation', 'prefix']
+                };
+
+              case 'suffix':
+                return {
+                  field: false,
+                  value: true,
+                  path: ['object', 'format', 'subkeyPunctuation', 'suffix']
+                };
+
+              default:
+                return true;
+            }
+          }
+        };
+
+        var editor = new JSONEditor(container, options, json);
+
+        jsoneditorSetFilename(filename);
+
+        // Load a JSON document
+        FileReaderJS.setupInput(document.getElementById('loadDocument'), {
+          readAsDefault: 'Text',
+          on: {
+            load: function (event, file) {
+              editor.setText(event.target.result);
+              filename = file.name;
+            }
+          }
+        });
+
+        // Save Json Document and check for error before saving.
+        document.getElementById('saveDocument').onclick = function (){
+            try {
+                var jsonData = editor.get();
+                if (validateJsonConfigFile(jsonData)) {
+                  var blob = new Blob([editor.getText(null, 2)], {type: 'application/json;charset=utf-8'});
+                  saveAs(blob, filename);
+                }
+            }
+            catch (e) {
+                alert(e.message);
+            }
+        };
+
+        // Open modal window with list of config files.
+        document.getElementById('listDocumentServer').onclick = function (){
+            try {
+                openformatFiles.list();
+                document.getElementById("modal-filelist").style.display = "block";
+                document.getElementById("overlay").style.display = "block";
+                setModalWindowCloseEvent();
+                setTimeout(function(){
+                    setLoadfileClickevent();
+                }, 1000);
+            }
+            catch (e) {
+                alert(e.message);
+            }
+        };
+
+        // Save Json Document and check for error before saving.
+        document.getElementById('modal-filename-form-submit').onclick = function (){
+            try {
+                var jsonData = editor.get();
+                if (validateJsonConfigFile(jsonData)) {
+                  saveFilename = document.getElementById("modal-filename-form-text").value;
+                  openformatFiles.save(saveFilename, editor.getText(null, 2));
+                }
+                modalWindowClose();
+                return false;
+            }
+            catch (e) {
+                alert(e.message);
+                return false;
+            }
+            jsoneditorSetFilename(saveFilename);
+        };
+
+
+        // Open modal window with filename input form.
+        document.getElementById('saveDocumentServer').onclick = function (){
+            try {
+                document.getElementById("modal-filename-form-text").value = document.filename;
+                document.getElementById("modal-filename").style.display = "block";
+                document.getElementById("overlay").style.display = "block";
+                document.getElementById("modal-filename-form-text").focus();
+                setModalWindowCloseEvent();
+            }
+            catch (e) {
+                alert(e.message);
+            }
+        };
+
+        var dts = document.querySelectorAll("dt");
+        for (var index = 0; index < dts.length; index++) {
+          dts[index].onclick = showDD;
+        }
+
+        // validate json config files.
+        function validateJsonConfigFile(jsonData) {
+          // This will trigger an exception if the json document is invalid.
+          // console.log(JSON.stringify(jsonData));
+          // Check for specific OpenFormat Configuration File.
+          if (jsonData['format'] !== undefined && jsonData['content'] !== undefined && jsonData['values'] !== undefined) {
+              // Validate field configuration.
+              OpenFormatValidate.field(jsonData);
+          } /*else {
+              // Validate display type.
+              OpenFormatValidate.display(jsonData);
+          }*/
+          if (OpenFormatValidate.errorText) {
+              alert(OpenFormatValidate.errorText);
+              return false;
+          }
+          if (OpenFormatValidate.noticeText) {
+              alert(OpenFormatValidate.noticeText);
+          }
+          return true;
+        }
+
+        // attach file load events.
+        function setLoadfileClickevent() {
+          var modalLoadfileElem = document.getElementsByClassName('load-file');
+          for (var i=0; i < modalLoadfileElem.length; i++) {
+            modalLoadfileElem[i].onclick = function () {
+              try {
+                var dataFileName = this.getAttribute("data-filename");
+                openformatFiles.load(dataFileName);
+                filename = dataFileName;
+                jsoneditorSetFilename(filename);
+                modalWindowClose();
+              }
+              catch (e) {
+                alert(e.message);
+              }
+            };
+          }
+        }
+
+        // attach modal window close events.
+        function setModalWindowCloseEvent() {
+          // create array instead of nodeList:
+          var modalCloseElem = Array.prototype.slice.call(document.getElementsByClassName('modal-close'));
+          // add overlay element to array
+          modalCloseElem.push(document.getElementById("overlay"));
+          for (var i=0; i < modalCloseElem.length; i++) {
+            modalCloseElem[i].onclick = function() {
+              modalWindowClose();
+            };
+          }
+        }
+
+        function modalWindowClose() {
+          try {
+            var elements = document.getElementsByClassName('modal');
+            for (var i=0; i < elements.length; i++) {
+                elements[i].style.display = "none";
+            }
+            document.getElementById("overlay").style.display = "none";
+          }
+          catch (e) {
+            alert(e.message);
+          }
+        }
+
+        function showDD() {
+          hideDDs();
+          this.nextSibling.nextSibling.setAttribute('class', 'show');
+        }
+
+        function hideDDs() {
+          var dts = document.querySelectorAll("dd");
+          for (var index = 0; index < dts.length; index++) {
+            dts[index].setAttribute('class', 'hide');
+          }
+        }
+
+        // update editor with name of file being edited
+        function jsoneditorSetFilename(filename) {
+          if ( document.getElementById("jsoneditor-filename") ) {
+            document.getElementById("jsoneditor-filename").innerHTML = filename;
+            return true;
+          }
+          var jsoneditorFilename = document.createElement('div');
+          jsoneditorFilename.innerHTML = filename;
+          jsoneditorFilename.setAttribute("id", "jsoneditor-filename");
+          var jsoneditorModes = document.getElementsByClassName('jsoneditor-modes');
+          for (var i=0; i < jsoneditorModes.length; i++) {
+            if (jsoneditorModes[i].nodeName == 'DIV') {
+              jsoneditorModes[i].parentNode.insertBefore(jsoneditorFilename, jsoneditorModes[i].nextSibling);
+            }
+          }
+          document.filename = filename;
+        }
+
+    </script>
+  </body>
+</html>

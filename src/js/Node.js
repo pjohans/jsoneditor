@@ -4,6 +4,7 @@ var naturalSort = require('javascript-natural-sort');
 var ContextMenu = require('./ContextMenu');
 var appendNodeFactory = require('./appendNodeFactory');
 var util = require('./util');
+var format = require('./format.js');
 
 /**
  * @constructor Node
@@ -1350,33 +1351,12 @@ Node.prototype._getDomField = function(silent) {
  */
 Node.prototype.validate = function () {
   var errors = [];
-
+  if(this.field == 'subfields'){
+    errors = this.checkSubfields();
+  }
   // find duplicate keys
   if (this.type === 'object') {
-    var keys = {};
-    var duplicateKeys = [];
-    for (var i = 0; i < this.childs.length; i++) {
-      var child = this.childs[i];
-      if (keys[child.field]) {
-        duplicateKeys.push(child.field);
-      }
-      keys[child.field] = true;
-    }
-
-    if (duplicateKeys.length > 0) {
-      errors = this.childs
-          .filter(function (node) {
-            return duplicateKeys.indexOf(node.field) !== -1;
-          })
-          .map(function (node) {
-            return {
-              node: node,
-              error: {
-                message: 'duplicate key "' + node.field + '"'
-              }
-            }
-          });
-    }
+    errors = this.checMultipleKeys();
   }
 
   // recurse over the childs
@@ -1389,8 +1369,55 @@ Node.prototype.validate = function () {
     }
   }
 
+
   return errors;
 };
+
+Node.prototype.checkSubfields = function () {
+  var errors = [];
+  errors = this.childs.filter(function (node) {
+      return node.childs.length > 1;
+    })
+    .map(function (node) {
+      return {
+        node: node,
+        error: {
+          message: 'multiple datafields are not allowed'
+        }
+      }
+    });
+  return errors;
+};
+
+Node.prototype.checMultipleKeys = function(){
+  var errors = [];
+  var keys = {};
+  var duplicateKeys = [];
+  for (var i = 0; i < this.childs.length; i++) {
+    var child = this.childs[i];
+    if (keys[child.field]) {
+      duplicateKeys.push(child.field);
+    }
+    keys[child.field] = true;
+  }
+  if (duplicateKeys.length > 0) {
+    errors = this.childs
+      .filter(function (node) {
+        return duplicateKeys.indexOf(node.field) !== -1;
+      })
+      .map(function (node) {
+        return {
+          node: node,
+          error: {
+            message: 'duplicate key "' + node.field + '"'
+          }
+        }
+      });
+  }
+  return errors;
+};
+
+
 
 /**
  * Clear the dom of the node

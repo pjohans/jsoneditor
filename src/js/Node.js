@@ -4,7 +4,6 @@ var naturalSort = require('javascript-natural-sort');
 var ContextMenu = require('./ContextMenu');
 var appendNodeFactory = require('./appendNodeFactory');
 var util = require('./util');
-var format = require('./format.js');
 
 /**
  * @constructor Node

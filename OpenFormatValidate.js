@@ -375,9 +375,9 @@ var OpenFormatValidate = {
         if (Object.keys(attribute).length === 0) {
             return;
         }
-        if (attribute['type'] === undefined) {
+        /*if (attribute['type'] === undefined) {
             this.__error("Only 'type' is allowed for attribute for now.");
-        }
+        }*/
         if (Object.keys(attribute).length > 1) {
             this.__error("There is more than one attribute ", attribute, ". Only 'type' is allowed for now.");
         }
